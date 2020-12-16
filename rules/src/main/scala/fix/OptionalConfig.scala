@@ -27,16 +27,22 @@ class OptionalConfig extends SemanticRule("OptionalConfig") {
 
     doc.tree.collect {
       case t @ Defn.Val(_, List(Pat.Var(Term.Name("configuration"))), _, Term.Name("None")) =>
-        val newTree = Defn.Val(
-          t.mods,
-          t.pats,
+        val newTree = t.copy(
           decltpe = Some(Type.Name("Config")),
           rhs = Term.Apply(Term.Select(Term.Name("ConfigFactory"), Term.Name("load")), Nil)
         )
 
-        Patch.addGlobalImport(importer"com.typesafe.config.ConfigFactory") +
-          Patch.removeTokens(t.tokens) +
-          Patch.addRight(t, newTree.syntax)
+        Patch.removeTokens(t.tokens) +
+        Patch.addRight(t, newTree.syntax) +
+        Patch.addGlobalImport(importer"com.typesafe.config.ConfigFactory")
+
+      case t @ Defn.Val(_, List(Pat.Var(Term.Name("configuration"))), _, Term.Apply(Term.Name("Some"), someArgs)) =>
+        val newTree = t.copy(
+          decltpe = Some(Type.Name("Config")),
+          rhs = someArgs.head
+        )
+        Patch.removeTokens(t.tokens) + Patch.addRight(t, newTree.syntax)
+
 
 //      case t @ Term.Name(name) if name == "configuration" =>
 //        println(name)
