@@ -12,53 +12,50 @@ class OptionalConfig extends SemanticRule("OptionalConfig") {
 
   override def fix(implicit doc: SemanticDocument): Patch = {
     // which traits have changed?
-      //WSRequestBuilder
-      //Retries
-      // Which traits then extend from these traits?
-      // - https://scalacenter.github.io/scalafix/docs/developers/symbol-information.html#lookup-class-parents
-
-    // find their usage
-    // look for the config
-      // if None, load from ConfigFactory (plus do the import)
-      // if Some, remove Some.
-
-//    println(doc.tree.syntax)
-//    println(doc.tree.structure)
+    //WSRequestBuilder
+    //Retries
+    // Which traits then extend from these traits?
 
     doc.tree.collect {
-      case t @ Defn.Val(_, List(Pat.Var(Term.Name("configuration"))), _, Term.Name("None")) =>
+      case Template(_, inits, _, bodyStatements) if matchingTraits(inits) =>
+        bodyStatements
+          .map(x => convertConfigurationVals(x.tree))
+          .foldLeft(Patch.empty)(_ + _)
+    }.asPatch
+  }
+
+  def matchingTraits(inits: List[Init])(implicit doc: SemanticDocument): Boolean = {
+    val symbols = inits.map(_.symbol)
+    val parents = symbols.flatMap(getParentSymbols)
+
+    (symbols ++ parents).map(_.value)
+      .contains("uk/gov/hmrc/http/Retries#")
+  }
+
+  private def convertConfigurationVals(tree: Tree): Patch = {
+    tree.collect {
+      case t@Defn.Val(_, List(Pat.Var(Term.Name("configuration"))), _, Term.Name("None")) =>
         val newTree = t.copy(
           decltpe = Some(Type.Name("Config")),
           rhs = Term.Apply(Term.Select(Term.Name("ConfigFactory"), Term.Name("load")), Nil)
         )
-
         Patch.removeTokens(t.tokens) +
-        Patch.addRight(t, newTree.syntax) +
-        Patch.addGlobalImport(importer"com.typesafe.config.ConfigFactory")
+          Patch.addRight(t, newTree.syntax) +
+          Patch.addGlobalImport(importer"com.typesafe.config.ConfigFactory")
 
-      case t @ Defn.Val(_, List(Pat.Var(Term.Name("configuration"))), _, Term.Apply(Term.Name("Some"), someArgs)) =>
+      case t@Defn.Val(_, List(Pat.Var(Term.Name("configuration"))), _, Term.Apply(Term.Name("Some"), someArgs)) =>
         val newTree = t.copy(
           decltpe = Some(Type.Name("Config")),
           rhs = someArgs.head
         )
         Patch.removeTokens(t.tokens) + Patch.addRight(t, newTree.syntax)
 
-
-//      case t @ Term.Name(name) if name == "configuration" =>
-//        println(name)
-//
-//        Patch.replaceTree(t, "config")
-//      case t =>
-//        val parents = getParentSymbols(t.symbol)
-//        val lookFor = Set("uk/gov/hmrc/http/Retries#", "uk.gov.hmrc.http.Retries")
-//        if (lookFor.exists(parents.map(_.value))) {
-//          patchConfigurationVal(t)
-//        }
     }.asPatch
   }
 
   // Lookup parent classes/traits
   // - we need this to identify traits that have extended the ones we are changing.
+  // - https://scalacenter.github.io/scalafix/docs/developers/symbol-information.html#lookup-class-parents
   private def getParentSymbols(symbol: Symbol)(implicit doc: SemanticDocument): Set[Symbol] = {
     symbol.info match {
       case None => Set.empty
@@ -73,10 +70,4 @@ class OptionalConfig extends SemanticRule("OptionalConfig") {
         }
     }
   }
-
-  private def patchConfigurationVal(t: Tree)(implicit doc: SemanticDocument): Patch = {
-//    println(t)
-    Patch.empty
-  }
-
 }
