@@ -2,6 +2,8 @@
 
 ## Usage
 
+https://scalacenter.github.io/scalafix/docs/rules/external-rules.html
+
 ## Developing:
 
 Please contribute rules!
@@ -30,7 +32,4 @@ Every rule can start off by doing the following though:
         Patch.empty
     }
     
-`astexplorer.net`
-    
-This won't make any changes, but it will print out the code being considered (doc.tree.synatax), but crucially the structure of the AST.
-
+This won't make any changes, but will display the code (the syntax) and the AST (the structure). You can view the AST structure by pasting code into [astexplorer.net](https://astexplorer.net/) too.
