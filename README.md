@@ -2,13 +2,27 @@
 
 ## Usage
 
-https://scalacenter.github.io/scalafix/docs/rules/external-rules.html
+As per [the scalafix guide for external rules](https://scalacenter.github.io/scalafix/docs/rules/external-rules.html), you can invoke the rules via command line.
 
-## Developing:
+For example, this runs the OptionalConfig scalafix rule:
 
-Please contribute rules!
+    sbt ";scalafixEnable;scalafix dependency:OptionalConfig@uk.gov.hmrc:scalafix-http-verbs-v13:0.1.0-SNAPSHOT"
 
-To develop rule:
+## Limitations
+
+These scalafix rules will never find and fix 100% of the required changes. We're taking a view that if the scalafix rules cover the basic use-cases, this will account for a large majority of code on the platform.
+
+such as the contentious issue of code formatting after scalafix, can be remedied by running other tools after scalafix. Running linters and formatters before scalafix can also increase the chances of rules being applied correctly too.
+
+We're hoping these limitations are reduced in time through continued use, and feedback from the people applying them.
+
+## Contributing
+
+We would love to accept contributions towards these rules. Please submit PRs for any changes you think would benefit others.
+
+We're still learning and experimenting with this tool, so any constructive feedback is welcomed too.
+
+To develop rules:
 ```
 sbt ~tests/test
 # edit rules/src/main/scala/fix/Httpverbs.scala
