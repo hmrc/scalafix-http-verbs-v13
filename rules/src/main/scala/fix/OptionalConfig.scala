@@ -23,15 +23,7 @@ import scala.meta.contrib._
 
 class OptionalConfig extends SemanticRule("OptionalConfig") {
 
-  // Example in the wild:
-  // https://github.com/hmrc/rate-scheduling/blob/d977b6007a6ec6529f2d6f9883cb6c73d8d164ef/app/config/RateHttpGet.scala
-
   override def fix(implicit doc: SemanticDocument): Patch = {
-    // which traits have changed?
-    //WSRequestBuilder
-    //Retries
-    // Which traits then extend from these traits?
-
     doc.tree.collect {
       case Template(_, inits, _, bodyStatements) if matchingTraits(inits) =>
         bodyStatements
@@ -50,7 +42,16 @@ class OptionalConfig extends SemanticRule("OptionalConfig") {
 
   private def convertConfigurationVals(tree: Tree): Patch = {
     tree.collect {
-      case t@Defn.Val(_, List(Pat.Var(Term.Name("configuration"))), _, Term.Name("None")) =>
+      case t@Defn.Def(_, Term.Name("configuration"), _, _, _, Term.Name("None")) =>
+        val newTree = t.copy(
+          decltpe = Some(Type.Name("Config")),
+          body = Term.Apply(Term.Select(Term.Name("ConfigFactory"), Term.Name("load")), Nil)
+        )
+        Patch.removeTokens(t.tokens) +
+          Patch.addRight(t, newTree.syntax) +
+          Patch.addGlobalImport(importer"com.typesafe.config.ConfigFactory")
+
+      case t@Defn.Val(_, Pat.Var(Term.Name("configuration")) :: Nil, _, Term.Name("None")) =>
         val newTree = t.copy(
           decltpe = Some(Type.Name("Config")),
           rhs = Term.Apply(Term.Select(Term.Name("ConfigFactory"), Term.Name("load")), Nil)
@@ -58,6 +59,13 @@ class OptionalConfig extends SemanticRule("OptionalConfig") {
         Patch.removeTokens(t.tokens) +
           Patch.addRight(t, newTree.syntax) +
           Patch.addGlobalImport(importer"com.typesafe.config.ConfigFactory")
+
+      case t@Defn.Def(_, Term.Name("configuration"), _, _, _, Term.Apply(Term.Name("Some"), someArgs)) =>
+        val newTree = t.copy(
+          decltpe = Some(Type.Name("Config")),
+          body = someArgs.head
+        )
+        Patch.removeTokens(t.tokens) + Patch.addRight(t, newTree.syntax)
 
       case t@Defn.Val(_, List(Pat.Var(Term.Name("configuration"))), _, Term.Apply(Term.Name("Some"), someArgs)) =>
         val newTree = t.copy(
