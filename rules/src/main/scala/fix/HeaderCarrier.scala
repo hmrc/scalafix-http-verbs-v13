@@ -22,10 +22,8 @@ import scala.meta.contrib._
 
 class HeaderCarrier extends SemanticRule("HeaderCarrier") {
 
-  val headerCarrierConverterExactMatcher = SymbolMatcher.exact("uk/gov/hmrc/play/HeaderCarrierConverter.")
-
-  private def isHeaderCarrierReturnType(signature: MethodSignature): Boolean =
-    signature.returnType.toString() == "HeaderCarrier"
+  val headerCarrierConverterExactMatcher =
+    SymbolMatcher.exact("uk/gov/hmrc/play/HeaderCarrierConverter.")
 
   override def fix(implicit doc: SemanticDocument): Patch = {
     doc.tree.collect {
@@ -35,19 +33,23 @@ class HeaderCarrier extends SemanticRule("HeaderCarrier") {
 
       case headerCarrierConverterExactMatcher(headerCarrierConverter) =>
         headerCarrierConverter.ancestors.collectFirst {
-          case headerCarrierDef@Defn.Def(mods, name, typeParams, params, declType, body) if isHeaderCarrierReturnType(headerCarrierDef.symbol.info.get.signature.asInstanceOf[MethodSignature]) =>
+          case headerCarrierDef@Defn.Def(mods, name, typeParams, params, /*returnType*/Some(Type.Name("HeaderCarrier")), body) =>
             val argName = params.flatten.collectFirst {
               case param@Term.Param(pMod, pName, Some(Type.Name("RequestHeader")), _) =>
                 pName.value
-            } getOrElse("rhz")
+            } getOrElse("requestHeader")
 
             val newTree = headerCarrierDef.copy(
-              body = Term.Apply(Term.Select(Term.Name("HeaderCarrierConverter"), Term.Name("fromRequest")), List(Term.Name(argName)))
+              body = Term.Apply(
+                Term.Select(Term.Name("HeaderCarrierConverter"), Term.Name("fromRequest")),
+                List(Term.Name(argName))
+              )
             )
+
             Patch.removeTokens(headerCarrierDef.tokens) +
               Patch.addRight(headerCarrierDef, newTree.syntax)
 
-          case headerCarrierVal@Defn.Val(mod, valName, tpe, rhs) =>
+          case headerCarrierVal@Defn.Val(mod, valName, /*returnType*/Some(Type.Name("HeaderCarrier")), rhs) =>
             val argName = headerCarrierVal.rhs match {
               case app @ Term.Apply(_, List(pRH, _*)) =>
                 pRH match {
@@ -55,11 +57,13 @@ class HeaderCarrier extends SemanticRule("HeaderCarrier") {
                   case Term.Assign(_, Term.Select(a, _)) => a.toString()
                 }
             }
-            println(s"argName: $argName")
 
             val newTree = headerCarrierVal.copy(
               decltpe = Some(Type.Name("HeaderCarrier")),
-              rhs = Term.Apply(Term.Select(Term.Name("HeaderCarrierConverter"), Term.Name("fromRequest")), List(Term.Name(argName)))
+              rhs = Term.Apply(
+                Term.Select(Term.Name("HeaderCarrierConverter"), Term.Name("fromRequest")),
+                List(Term.Name(argName))
+              )
             )
 
             Patch.removeTokens(headerCarrierVal.rhs.tokens) +

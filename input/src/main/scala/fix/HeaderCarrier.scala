@@ -47,7 +47,7 @@ class ErrorHandlerOverride @Inject() (
   }
 
   override def onServerError(request: RequestHeader, ex: Throwable): Future[Result] = {
-    implicit val headerCarrier: HeaderCarrier = HeaderCarrierConverter.fromHeadersAndSessionAndRequest(headers = request.headers, request = Some(request))
+    implicit val headerCarrier: HeaderCarrier = HeaderCarrierConverter.fromHeadersAndSessionAndRequest(/*headers =*/ request.headers, request = Some(request))
 
     logger.error(s"! Internal server error, for (${request.method}) [${request.uri}] -> ", ex)
 
