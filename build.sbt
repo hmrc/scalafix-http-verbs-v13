@@ -26,14 +26,16 @@ lazy val rules = project
 lazy val input = project.settings(
   skip in publish := true,
   libraryDependencies ++= Seq(
-    "uk.gov.hmrc" %% "http-verbs-play-26" % "12.3.0"
+    "uk.gov.hmrc" %% "http-verbs-play-26" % "12.3.0",
+    "uk.gov.hmrc" %% "bootstrap-backend-play-27"    % "2.24.0"
   )
 )
 
 lazy val output = project.settings(
   skip in publish := true,
   libraryDependencies ++= Seq(
-    "uk.gov.hmrc" %% "http-verbs-play-26" % "13.0.0-SNAPSHOT"
+    "uk.gov.hmrc" %% "http-verbs-play-26" % "13.0.0-SNAPSHOT",
+    "uk.gov.hmrc" %% "bootstrap-backend-play-27"    % "2.24.0" exclude("uk.gov.hmrc", "http-verbs-play-26")
   )
 )
 
